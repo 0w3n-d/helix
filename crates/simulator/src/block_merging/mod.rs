@@ -675,6 +675,7 @@ where
         )?;
         // Check the order has some revenue
         if simulated_order.builder_payment.is_zero() {
+            debug!(?simulated_order, "Doesn't add value?");
             return Err(SimulationError::ZeroBuilderPayment);
         }
         // Check we have enough gas to include the order
