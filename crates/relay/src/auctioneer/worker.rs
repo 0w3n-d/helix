@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use alloy_primitives::B256;
 use helix_common::{
@@ -11,8 +14,9 @@ use helix_common::{
 };
 use helix_types::{
     BlockMergingData, BlsPublicKey, BlsPublicKeyBytes, DehydratedBidSubmission, ExecPayload,
-    MergeableOrdersWithPref, SigError, SignedBidSubmission, SignedBidSubmissionWithMergingData,
-    SignedBlindedBeaconBlock, SignedValidatorRegistration, SubmissionVersion,
+    MergeableOrders, MergeableOrdersWithPref, SigError, SignedBidSubmission,
+    SignedBidSubmissionWithMergingData, SignedBlindedBeaconBlock, SignedValidatorRegistration,
+    SubmissionVersion,
 };
 use http::HeaderValue;
 use tracing::{error, info, info_span, trace};
@@ -152,21 +156,39 @@ impl SubWorker {
                         drop(guard);
 
                         let merging_data = merging_data.and_then(|data| {
-                            if let Submission::Full(ref signed_bid_submission) = submission {
-                                //TODO: split up mergeable order and submission processing to avoid
-                                // delaying the bid update
-                                match get_mergeable_orders(signed_bid_submission, &data) {
-                                    Ok(orders) => Some(MergeableOrdersWithPref {
-                                        allow_appending: data.allow_appending,
-                                        orders,
-                                    }),
-                                    Err(err) => {
-                                        error!(%err, "failed to process mergeable orders");
-                                        None
+                            if data.merge_orders.is_empty() {
+                                return Some(MergeableOrdersWithPref {
+                                    allow_appending: data.allow_appending,
+                                    orders: MergeableOrders {
+                                        origin: data.builder_address,
+                                        orders: vec![],
+                                        blobs: HashMap::new(),
+                                    },
+                                });
+                            }
+
+                            match &submission {
+                                Submission::Full(signed_bid_submission) => {
+                                    //TODO: split up mergeable order and submission processing to
+                                    // avoid delaying the bid
+                                    // update
+                                    match get_mergeable_orders(signed_bid_submission, &data) {
+                                        Ok(orders) => Some(MergeableOrdersWithPref {
+                                            allow_appending: data.allow_appending,
+                                            orders,
+                                        }),
+                                        Err(err) => {
+                                            error!(%err, "failed to process mergeable orders");
+                                            None
+                                        }
                                     }
                                 }
-                            } else {
-                                None
+                                Submission::Dehydrated(_) => {
+                                    error!(
+                                        "mergeable orders not supported for dehydrated submissions"
+                                    );
+                                    None
+                                }
                             }
                         });
 

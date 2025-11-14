@@ -212,6 +212,7 @@ pub(crate) enum RecoverError {
     InvalidSignature,
 }
 
+#[derive(Debug)]
 pub(crate) struct SimulatedOrder {
     pub(crate) order: MergeableOrderRecovered,
     pub(crate) gas_used: u64,

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, time::Instant};
 
 use alloy_consensus::{SignableTransaction, Transaction, TxEip1559};
 use alloy_eips::{eip7685::RequestsOrHash, eip7840::BlobParams};
@@ -62,6 +62,7 @@ impl BlockMergingApi {
         &self,
         request: BlockMergeRequestV1,
     ) -> Result<BlockMergeResponseV1, BlockMergingApiError> {
+        let start_time = Instant::now();
         let base_block_hash = request.execution_payload.payload_inner.payload_inner.block_hash;
         info!(
             target: "rpc::relay::block_merging",
@@ -87,6 +88,7 @@ impl BlockMergingApi {
                 block,
                 parent_beacon_block_root,
                 request.merging_data,
+                start_time,
             )
             .await?;
 
@@ -157,6 +159,7 @@ impl BlockMergingApi {
         base_block: Block,
         parent_beacon_block_root: B256,
         merging_data: Vec<MergeableOrderBytes>,
+        start_time: Instant,
     ) -> Result<(BlockMergeResponseV1, Vec<B256>, CachedReads), BlockMergingApiError> {
         let validation = &self.validation;
 
@@ -273,7 +276,11 @@ impl BlockMergingApi {
             .into_iter()
             .zip(senders)
             .map(|(tx, sender)| RecoveredTx::new_unchecked(tx, sender));
+
+        self.merging_metrics.prep_to_execute_us.record(start_time.elapsed());
+
         builder.execute_base_block(recovered_txs)?;
+        let start_time = Instant::now();
 
         let base_block_tx_count = builder.tx_hashes.len();
         debug!(
@@ -282,6 +289,9 @@ impl BlockMergingApi {
             gas_used=%builder.gas_used,
             "Finished executing base block",
         );
+
+        self.merging_metrics.execute_base_block.record(start_time.elapsed());
+        let start_time = Instant::now();
 
         let recovered_orders: Vec<MergeableOrderRecovered> =
             merging_data.into_par_iter().filter_map(|order| order.recover().ok()).collect();
@@ -310,6 +320,9 @@ impl BlockMergingApi {
             count=%simulated_orders.len(),
             "Finished simulating orders",
         );
+
+        self.merging_metrics.execute_merge_orders.record(start_time.elapsed());
+        let start_time = Instant::now();
 
         // Sort orders by revenue, in descending order
         simulated_orders.sort_unstable_by(|o1, o2| o2.builder_payment.cmp(&o1.builder_payment));
@@ -386,6 +399,8 @@ impl BlockMergingApi {
         );
 
         let built_block = builder.finish(&state_provider)?;
+
+        self.merging_metrics.finish.record(start_time.elapsed());
 
         let response = BlockMergeResponseV1 {
             base_block_hash,
@@ -660,6 +675,7 @@ where
         )?;
         // Check the order has some revenue
         if simulated_order.builder_payment.is_zero() {
+            debug!(target: "rpc::relay::block_merging", ?simulated_order, "Doesn't add value?");
             return Err(SimulationError::ZeroBuilderPayment);
         }
         // Check we have enough gas to include the order
