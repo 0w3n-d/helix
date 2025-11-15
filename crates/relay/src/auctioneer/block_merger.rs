@@ -180,6 +180,7 @@ impl BlockMerger {
         response: BlockMergeResponse,
         original_payload: Arc<PayloadAndBlobs>,
     ) -> Result<PayloadEntry, PayloadMergingError> {
+        debug!(?response.builder_inclusions, %response.proposer_value, "preparing merged payload for storage");
         let start_time = Instant::now();
         let bid_slot = self.curr_bid_slot;
         let max_blobs_per_block = self.chain_info.max_blobs_per_block();
@@ -220,6 +221,8 @@ impl BlockMerger {
             builder_inclusions: response.builder_inclusions,
         });
 
+        trace!(%block_hash, "stored merged block in local cache");
+
         let blobs = &self.best_mergeable_orders.mergeable_blob_bundles;
 
         let mut merged_blobs_bundle = original_payload.blobs_bundle.clone();
@@ -243,6 +246,8 @@ impl BlockMerger {
             value: response.proposer_value,
             tx_root: None,
         };
+
+        trace!(%block_hash, %response.proposer_value, "blobs appended to merged payload");
 
         let new_bid = PayloadHeaderData {
             payload_and_blobs: payload_and_blobs.clone(),
