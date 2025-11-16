@@ -100,6 +100,7 @@ impl BlockMerger {
     }
 
     pub fn get_header(&self, original_bid: &PayloadHeaderData) -> Option<PayloadHeaderData> {
+        trace!("fetching merged header");
         let start_time = Instant::now();
         let entry = self.best_merged_block.as_ref()?;
         if !merged_bid_higher(
@@ -108,17 +109,19 @@ impl BlockMerger {
             entry.base_block_time_ms,
             self.config.block_merging_config.max_merged_bid_age_ms,
         ) {
+            trace!("merged bid not higher");
             return None;
         }
 
         if entry.bid.payload_and_blobs.execution_payload.parent_hash !=
             original_bid.payload_and_blobs.execution_payload.parent_hash
         {
+            trace!("merged bid parent hash does not match original bid parent hash");
             return None;
         }
 
         record_step("get_header", start_time.elapsed());
-
+        trace!("fetched merged header");
         Some(entry.bid.clone())
     }
 
