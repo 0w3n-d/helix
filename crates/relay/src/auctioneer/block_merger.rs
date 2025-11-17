@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, hash_map::Entry},
+    collections::{HashMap, HashSet, hash_map::Entry},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -12,16 +12,15 @@ use helix_common::{
     utils::utcnow_ms,
 };
 use helix_types::{
-    BlobWithMetadata, BlobWithMetadataV1, BlobWithMetadataV2, BlobsBundle, BlobsBundleVersion,
-    BlockMergingData, BundleOrder, KzgCommitment, MergeableBundle, MergeableOrder,
-    MergeableOrderWithOrigin, MergeableOrders, MergeableTransaction, MergedBlock, Order,
-    PayloadAndBlobs, SignedBidSubmission, Transactions,
+    BlobWithMetadata, BlobWithMetadataV1, BlobWithMetadataV2, BlobsBundle, BlobsBundleVersion, BlockMergingData, BundleOrder, ExecutionPayload, KzgCommitment, MergeableBundle, MergeableOrder, MergeableOrderWithOrigin, MergeableOrders, MergeableOrdersWithPref, MergeableTransaction, MergedBlock, Order, PayloadAndBlobs, SignedBidSubmission, TestRandom, Transactions
 };
+use rand::{Rng, rng};
+use serde_json::json;
 use tracing::{debug, error, trace, warn};
+use zstd::zstd_safe::WriteBuf;
 
 use crate::auctioneer::{
-    BlockMergeRequest, BlockMergeResponse, PayloadBidData, PayloadHeaderData,
-    submit_block::MergeData, types::PayloadEntry,
+    BlockMergeRequest, BlockMergeRequestRef, BlockMergeResponse, PayloadBidData, PayloadHeaderData, submit_block::MergeData, types::PayloadEntry
 };
 
 const MERGE_REQUEST_INTERVAL_MS: u64 = 50;
@@ -161,16 +160,38 @@ impl BlockMerger {
         let start_time = Instant::now();
         let base_block_hash = self.base_block?;
         let base_block = self.base_blocks.get(&base_block_hash)?;
+        
+        let blk_txs: HashSet<_> = base_block
+        .execution_payload
+        .transactions
+        .iter()
+        .map(|tx| tx.as_slice())
+        .collect();
 
-        let (orders, _) = self.best_mergeable_orders.load()?;
-        let merge_request = BlockMergeRequest::new(
-            base_block.slot,
-            base_block.value,
-            base_block.proposer_fee_recipient,
-            &base_block.execution_payload,
-            base_block.parent_beacon_block_root,
-            orders,
-        );
+        self.best_mergeable_orders.has_new_orders = false;
+
+        let trimmed_orders: Vec<MergeableOrderWithOrigin> = self.best_mergeable_orders.best_orders
+            .iter()
+            .filter(|o| match &o.order {
+                MergeableOrder::Tx(tx) => !blk_txs.contains(tx.transaction.as_slice()),
+                MergeableOrder::Bundle(b) => !b.transactions.iter().any(|t| blk_txs.contains(t.as_slice())),
+            })
+            .cloned()
+            .collect();
+
+        trace!(count = trimmed_orders.len(), "found orders");
+
+        let merge_request = BlockMergeRequest {
+            bid_slot: base_block.slot,
+            request: json!(BlockMergeRequestRef {
+                original_value: base_block.value,
+                proposer_fee_recipient: base_block.proposer_fee_recipient,
+                execution_payload: &base_block.execution_payload,
+                parent_beacon_block_root: base_block.parent_beacon_block_root,
+                merging_data: &trimmed_orders,
+            }),
+            block_hash: base_block_hash,
+        };
 
         self.has_new_base_block = false;
         self.last_merge_request_time_ms = utcnow_ms();
@@ -640,4 +661,61 @@ fn merged_bid_higher(
 pub fn record_step(label: &str, duration: Duration) {
     let value = duration.as_nanos() as f64 / 1000.;
     MERGE_TRACE_LATENCY.with_label_values(&[label]).observe(value);
+}
+
+#[test]
+fn test_fetch_merge_request() {
+
+    let curr_bid_slot =  1;
+    let chain_info = ChainInfo::for_hoodi();
+    let local_cache = LocalCache::new_test();
+    let config = RelayConfig::empty_for_test();
+
+    let mut bm = BlockMerger::new(curr_bid_slot, chain_info, local_cache, config);
+
+    let mut random = rng();
+
+    
+    let payload = ExecutionPayload::random_for_test(&mut random);
+    let base_hash = payload.block_hash;
+
+    let mut orders = Vec::new();
+
+    for i in &payload.transactions {
+        orders.push(MergeableOrder::Tx(MergeableTransaction {
+            transaction: i.0.clone().into(),
+            can_revert: true,
+        }));
+    }
+
+    let mo = MergeableOrders { origin: Address::random(), orders, blobs: HashMap::new() };
+
+
+    let merge_data = MergeData {
+        is_top_bid: true,
+        slot: 1,
+        block_hash: base_hash,
+        block_value: U256::ZERO,
+        proposer_fee_recipient: Address::random(),
+        parent_beacon_block_root: None,
+        execution_payload: payload,
+        merging_data: MergeableOrdersWithPref {
+            allow_appending: true,
+            orders: mo,
+        },
+    };
+
+    let s = Instant::now();
+    bm.insert_merge_data(merge_data);
+    println!("{}", s.elapsed().as_micros());
+
+    let s = Instant::now();
+    bm.update_base_block(base_hash);
+    println!("{}", s.elapsed().as_micros());
+
+    let s = Instant::now();
+    let res = bm.fetch_merge_request();
+    assert!(res.is_some());
+    println!("{}", s.elapsed().as_micros());
+
 }

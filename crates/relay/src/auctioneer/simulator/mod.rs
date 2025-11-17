@@ -75,30 +75,6 @@ pub struct BlockMergeRequest {
     pub block_hash: B256,
 }
 
-impl BlockMergeRequest {
-    pub fn new(
-        bid_slot: u64,
-        original_value: U256,
-        proposer_fee_recipient: Address,
-        execution_payload: &ExecutionPayload,
-        parent_beacon_block_root: Option<B256>,
-        merging_data: &[MergeableOrderWithOrigin],
-    ) -> Self {
-        let block_hash = execution_payload.block_hash;
-        // We serialize the request ahead of time, to avoid copying the original
-        // payload and merging data.
-        let request_ref = BlockMergeRequestRef {
-            original_value,
-            proposer_fee_recipient,
-            execution_payload,
-            parent_beacon_block_root,
-            merging_data,
-        };
-        let request = json!(request_ref);
-        Self { bid_slot, request, block_hash }
-    }
-}
-
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct JsonRpcError {
     pub message: String,
