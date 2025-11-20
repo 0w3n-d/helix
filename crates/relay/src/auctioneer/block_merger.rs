@@ -161,12 +161,10 @@ impl BlockMerger {
         let base_block_hash = self.base_block?;
         let base_block = self.base_blocks.get(&base_block_hash)?;
         
-        let blk_txs: HashSet<_> = base_block
-        .execution_payload
-        .transactions
-        .iter()
-        .map(|tx| tx.as_slice())
-        .collect();
+        let base_txs = &base_block.execution_payload.transactions;
+        let blk_txs: HashSet<_> = HashSet::from_iter(
+            base_txs.iter().map(|tx| tx.as_slice())
+        );
 
         self.best_mergeable_orders.has_new_orders = false;
 
@@ -629,8 +627,8 @@ fn merged_bid_higher(
     if merged_bid.value() <= original_bid.value() {
         debug!(
             "merged bid {:?} with value {:?} is not higher than regular bid, using regular bid, value = {:?}, block_hash = {:?}",
-            merged_bid.value(),
             merged_bid.block_hash(),
+            merged_bid.value(),
             original_bid.value(),
             original_bid.block_hash()
         );

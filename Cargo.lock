@@ -2009,7 +2009,7 @@ dependencies = [
 [[package]]
 name = "bls"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "alloy-primitives",
  "arbitrary",
@@ -2502,7 +2502,7 @@ dependencies = [
 [[package]]
 name = "compare_fields"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "itertools 0.10.5",
 ]
@@ -2510,7 +2510,7 @@ dependencies = [
 [[package]]
 name = "compare_fields_derive"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -2607,7 +2607,7 @@ checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 [[package]]
 name = "context_deserialize"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "context_deserialize_derive",
  "milhouse",
@@ -2618,7 +2618,7 @@ dependencies = [
 [[package]]
 name = "context_deserialize_derive"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -3483,6 +3483,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "eip_3076"
+version = "0.1.0"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
+dependencies = [
+ "ethereum_serde_utils",
+ "serde",
+ "types",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3745,9 +3755,10 @@ dependencies = [
 [[package]]
 name = "eth2"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "derivative",
+ "eip_3076",
  "either",
  "enr 0.13.0",
  "eth2_keystore",
@@ -3767,7 +3778,6 @@ dependencies = [
  "sensitive_url",
  "serde",
  "serde_json",
- "slashing_protection",
  "ssz_types",
  "test_random_derive",
  "types",
@@ -3777,7 +3787,7 @@ dependencies = [
 [[package]]
 name = "eth2_interop_keypairs"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "bls",
  "ethereum_hashing",
@@ -3790,7 +3800,7 @@ dependencies = [
 [[package]]
 name = "eth2_key_derivation"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "bls",
  "num-bigint-dig",
@@ -3802,7 +3812,7 @@ dependencies = [
 [[package]]
 name = "eth2_keystore"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "aes 0.7.5",
  "bls",
@@ -4282,25 +4292,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
 
 [[package]]
-name = "field-offset"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38e2275cc4e4fc009b0669731a1e5ab7ebf11f469eaede2bab9309a5b4d6057f"
-dependencies = [
- "memoffset",
- "rustc_version 0.4.1",
-]
-
-[[package]]
-name = "filesystem"
-version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
-dependencies = [
- "winapi",
- "windows-acl",
-]
-
-[[package]]
 name = "filetime"
 version = "0.2.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4327,7 +4318,7 @@ dependencies = [
 [[package]]
 name = "fixed_bytes"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "alloy-primitives",
  "safe_arith",
@@ -5735,7 +5726,7 @@ dependencies = [
 [[package]]
 name = "int_to_bytes"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "bytes",
 ]
@@ -5751,7 +5742,7 @@ dependencies = [
  "libc",
  "recvmsg",
  "tokio",
- "widestring 1.2.1",
+ "widestring",
  "windows-sys 0.52.0",
 ]
 
@@ -5773,7 +5764,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b58db92f96b720de98181bbbe63c831e87005ab460c1bf306eb2622b4707997f"
 dependencies = [
  "socket2 0.5.10",
- "widestring 1.2.1",
+ "widestring",
  "windows-sys 0.48.0",
  "winreg",
 ]
@@ -6160,7 +6151,7 @@ dependencies = [
 [[package]]
 name = "kzg"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "arbitrary",
  "c-kzg",
@@ -6567,18 +6558,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "memoffset"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "merkle_proof"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "alloy-primitives",
  "ethereum_hashing",
@@ -6612,7 +6594,7 @@ dependencies = [
 [[package]]
 name = "metrics"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "prometheus",
 ]
@@ -7844,7 +7826,7 @@ dependencies = [
 [[package]]
 name = "pretty_reqwest_error"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "reqwest 0.11.27",
  "sensitive_url",
@@ -8107,7 +8089,7 @@ dependencies = [
 [[package]]
 name = "proto_array"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "ethereum_ssz",
  "ethereum_ssz_derive",
@@ -8234,27 +8216,6 @@ name = "r-efi"
 version = "5.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
-
-[[package]]
-name = "r2d2"
-version = "0.8.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51de85fb3fb6524929c8a2eb85e6b6d363de4e8c48f9e2c2eac4944abc181c93"
-dependencies = [
- "log",
- "parking_lot",
- "scheduled-thread-pool",
-]
-
-[[package]]
-name = "r2d2_sqlite"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4f5d0337e99cd5cacd91ffc326c6cc9d8078def459df560c4f9bf9ba4a51034"
-dependencies = [
- "r2d2",
- "rusqlite",
-]
 
 [[package]]
 name = "radium"
@@ -11750,7 +11711,8 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 [[package]]
 name = "safe_arith"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b147bb6111014916d3ef9d4c85173124a8e12193a67f6176d67244afd558d6c1"
 
 [[package]]
 name = "salsa20"
@@ -11810,15 +11772,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "891d81b926048e76efe18581bf793546b4c0eaf8448d72be8de2bbee5fd166e1"
 dependencies = [
  "windows-sys 0.61.1",
-]
-
-[[package]]
-name = "scheduled-thread-pool"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cbc66816425a074528352f5789333ecff06ca41b36b0b0efdfbb29edc391a19"
-dependencies = [
- "parking_lot",
 ]
 
 [[package]]
@@ -12031,7 +11984,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sensitive_url"
 version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "serde",
  "url",
@@ -12407,27 +12360,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2ae44ef20feb57a68b23d846850f861394c2e02dc425a50098ae8c90267589"
 
 [[package]]
-name = "slashing_protection"
-version = "0.1.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
-dependencies = [
- "arbitrary",
- "ethereum_serde_utils",
- "filesystem",
- "r2d2",
- "r2d2_sqlite",
- "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
- "tracing",
- "types",
-]
-
-[[package]]
 name = "slot_clock"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "metrics 0.2.0",
  "parking_lot",
@@ -12645,16 +12580,16 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "superstruct"
-version = "0.8.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf0f31f730ad9e579364950e10d6172b4a9bd04b447edf5988b066a860cc340e"
+checksum = "3b986e4a629907f20a2c2a639a75bc22a8b5d99b444e0d83c395f4cb309022bf"
 dependencies = [
- "darling 0.13.4",
- "itertools 0.10.5",
+ "darling 0.20.11",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "smallvec",
- "syn 1.0.109",
+ "syn 2.0.106",
 ]
 
 [[package]]
@@ -12680,7 +12615,7 @@ dependencies = [
 [[package]]
 name = "swap_or_not_shuffle"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "alloy-primitives",
  "ethereum_hashing",
@@ -12911,7 +12846,7 @@ dependencies = [
 [[package]]
 name = "test_random_derive"
 version = "0.2.0"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -13802,7 +13737,7 @@ checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
 [[package]]
 name = "types"
 version = "0.2.1"
-source = "git+https://github.com/sigp/lighthouse?rev=e5b4983d6baf85770fe4539a565d8a2dd462bc53#e5b4983d6baf85770fe4539a565d8a2dd462bc53"
+source = "git+https://github.com/sigp/lighthouse?tag=v8.0.0#e3ee7febce64c1b5a85c3ab0be0619571ee92d58"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -14340,12 +14275,6 @@ dependencies = [
 
 [[package]]
 name = "widestring"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c168940144dd21fd8046987c16a46a33d5fc84eec29ef9dcddc2ac9e31526b7c"
-
-[[package]]
-name = "widestring"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72069c3113ab32ab29e5584db3c6ec55d416895e60715417b5b883a357c3e471"
@@ -14401,18 +14330,6 @@ dependencies = [
  "windows-core 0.62.1",
  "windows-future",
  "windows-numerics",
-]
-
-[[package]]
-name = "windows-acl"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "177b1723986bcb4c606058e77f6e8614b51c7f9ad2face6f6fd63dd5c8b3cec3"
-dependencies = [
- "field-offset",
- "libc",
- "widestring 0.4.3",
- "winapi",
 ]
 
 [[package]]
