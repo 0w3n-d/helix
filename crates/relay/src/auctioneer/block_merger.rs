@@ -165,14 +165,21 @@ impl BlockMerger {
         trace!("proceeding with merge request");
 
         let start_time = Instant::now();
-        let base_block_hash = self.base_block?;
-        let base_block = self.base_blocks.get(&base_block_hash)?;
+        let Some(base_block_hash) = self.base_block else {
+            error!("no base block set for merge request");
+            return None;
+        };
+
+        let Some(base_block) = self.base_blocks.get(&base_block_hash) else {
+            error!(%base_block_hash, "could not find base block data for merge request");
+            return None;
+        };
         
         let base_txs = &base_block.execution_payload.transactions;
         let blk_txs: HashSet<_> = HashSet::from_iter(
             base_txs.iter().map(|tx| tx.as_slice())
         );
-
+        
         self.best_mergeable_orders.has_new_orders = false;
 
         let trimmed_orders: Vec<MergeableOrderWithOrigin> = self.best_mergeable_orders.best_orders
