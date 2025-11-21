@@ -156,9 +156,13 @@ impl BlockMerger {
     }
 
     pub fn fetch_merge_request(&mut self) -> Option<BlockMergeRequest> {
+        trace!("fetching merge request");
         if !self.should_request_merge() {
+            trace!("should not request merge");
             return None;
         }
+
+        trace!("proceeding with merge request");
 
         let start_time = Instant::now();
         let base_block_hash = self.base_block?;
@@ -197,6 +201,7 @@ impl BlockMerger {
         self.has_new_base_block = false;
         self.last_merge_request_time_ms = utcnow_ms();
         record_step("fetch_merge_request", start_time.elapsed());
+        trace!("fetched merge request");
         Some(merge_request)
     }
 
