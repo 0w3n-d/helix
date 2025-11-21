@@ -343,7 +343,6 @@ impl BlockMerger {
         };
 
         self.base_blocks.insert(*base_block_hash, base_block_data);
-        self.has_new_base_block = true;
         record_step("update_base_block", start_time.elapsed());
     }
 }
