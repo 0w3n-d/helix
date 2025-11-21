@@ -12,7 +12,10 @@ use helix_common::{
     utils::utcnow_ms,
 };
 use helix_types::{
-    BlobWithMetadata, BlobWithMetadataV1, BlobWithMetadataV2, BlobsBundle, BlobsBundleVersion, BlockMergingData, BundleOrder, ExecutionPayload, KzgCommitment, MergeableBundle, MergeableOrder, MergeableOrderWithOrigin, MergeableOrders, MergeableOrdersWithPref, MergeableTransaction, MergedBlock, Order, PayloadAndBlobs, SignedBidSubmission, TestRandom, Transactions
+    BlobWithMetadata, BlobWithMetadataV1, BlobWithMetadataV2, BlobsBundle, BlobsBundleVersion,
+    BlockMergingData, BlsPublicKeyBytes, BundleOrder, KzgCommitment, MergeableBundle,
+    MergeableOrder, MergeableOrderWithOrigin, MergeableOrders, MergeableOrdersWithPref,
+    MergeableTransaction, MergedBlock, Order, PayloadAndBlobs, SignedBidSubmission, Transactions,
 };
 use rand::{Rng, rng};
 use serde_json::json;
@@ -201,6 +204,7 @@ impl BlockMerger {
         &mut self,
         response: BlockMergeResponse,
         original_payload: Arc<PayloadAndBlobs>,
+        builder_pubkey: BlsPublicKeyBytes,
     ) -> Result<PayloadEntry, PayloadMergingError> {
         debug!(?response.builder_inclusions, %response.proposer_value, "preparing merged payload for storage");
         let start_time = Instant::now();
@@ -267,6 +271,7 @@ impl BlockMerger {
             execution_requests: Arc::new(response.execution_requests),
             value: response.proposer_value,
             tx_root: None,
+            builder_pubkey,
         };
 
         trace!(%block_hash, %response.proposer_value, "blobs appended to merged payload");
@@ -283,7 +288,7 @@ impl BlockMerger {
         record_step("prepare_merged_payload_for_storage", start_time.elapsed());
 
         // Return the payload entry to be stored for get payload calls
-        Ok(PayloadEntry { payload_and_blobs, bid_data: Some(bid_data) })
+        Ok(PayloadEntry { payload_and_blobs, bid_data })
     }
 
     fn should_request_merge(&self) -> bool {
