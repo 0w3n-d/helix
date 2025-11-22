@@ -97,6 +97,7 @@ impl BlockMerger {
         self.best_merged_block = None;
         self.best_mergeable_orders.reset();
         self.base_blocks.clear();
+        self.base_block = None;
         self.has_new_base_block = false;
         self.last_merge_request_time_ms = 0;
     }
