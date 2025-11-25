@@ -1,5 +1,7 @@
 use std::{
-    collections::{HashMap, hash_map::Entry}, sync::Arc, time::{Duration, Instant}
+    collections::{HashMap, hash_map::Entry},
+    sync::Arc,
+    time::{Duration, Instant},
 };
 
 use alloy_consensus::{Bytes48, TxEip4844, TxType};
@@ -9,7 +11,10 @@ use helix_common::{
     utils::utcnow_ms,
 };
 use helix_types::{
-    BlobWithMetadata, BlobWithMetadataV1, BlobWithMetadataV2, BlobsBundle, BlobsBundleVersion, BlockMergingData, BlsPublicKeyBytes, BundleOrder, KzgCommitment, MergeableBundle, MergeableOrder, MergeableOrderWithOrigin, MergeableOrders, MergeableTransaction, MergedBlock, Order, PayloadAndBlobs, SignedBidSubmission, Transactions
+    BlobWithMetadata, BlobWithMetadataV1, BlobWithMetadataV2, BlobsBundle, BlobsBundleVersion,
+    BlockMergingData, BlsPublicKeyBytes, BundleOrder, KzgCommitment, MergeableBundle,
+    MergeableOrder, MergeableOrderWithOrigin, MergeableOrders, MergeableTransaction, MergedBlock,
+    Order, PayloadAndBlobs, SignedBidSubmission, Transactions,
 };
 use rustc_hash::{FxBuildHasher, FxHashSet};
 use serde_json::json;
@@ -17,7 +22,8 @@ use tracing::{debug, error, info, trace, warn};
 use zstd::zstd_safe::WriteBuf;
 
 use crate::auctioneer::{
-    BlockMergeRequest, BlockMergeRequestRef, BlockMergeResponse, PayloadBidData, PayloadHeaderData, submit_block::MergeData, types::PayloadEntry
+    BlockMergeRequest, BlockMergeRequestRef, BlockMergeResponse, PayloadBidData, PayloadHeaderData,
+    submit_block::MergeData, types::PayloadEntry,
 };
 
 const MERGE_REQUEST_INTERVAL_MS: u64 = 50;
@@ -107,7 +113,7 @@ impl BlockMerger {
 
 impl BlockMerger {
     pub fn on_new_slot(&mut self, bid_slot: u64) {
-        info!(old_slot = %self.curr_bid_slot, new_slot = %bid_slot, fetch_merge_request_count = %self.fetch_merge_request_count, proceeding_merge_request_count = %self.proceeding_merge_request_count, no_base_block_count = %self.no_base_block_count, no_appendable_block_data_count = %self.no_appendable_block_data_count, found_orders_count = %self.found_orders_count, "resetting block merger slot");
+        info!(old_slot = %self.curr_bid_slot, new_slot = %bid_slot, inserted_appendable_blocks_count = %self.inserted_appendable_blocks_count, inserted_orders_count = %self.inserted_orders_count, updated_base_block_count = %self.updated_base_block_count, fetch_merge_request_count = %self.fetch_merge_request_count, proceeding_merge_request_count = %self.proceeding_merge_request_count, no_base_block_count = %self.no_base_block_count, no_appendable_block_data_count = %self.no_appendable_block_data_count, found_orders_count = %self.found_orders_count, "resetting block merger slot");
         self.curr_bid_slot = bid_slot;
         self.best_merged_block = None;
         self.best_mergeable_orders.reset();
@@ -162,7 +168,7 @@ impl BlockMerger {
             self.has_new_base_block = true;
             self.base_txs_set.clear();
             self.base_txs_set.extend(
-                base_block_data.execution_payload.transactions.iter().map(|tx| tx.0.clone())
+                base_block_data.execution_payload.transactions.iter().map(|tx| tx.0.clone()),
             );
         }
     }
@@ -212,20 +218,23 @@ impl BlockMerger {
             self.no_appendable_block_data_count += 1;
             return None;
         };
-        
+
         self.best_mergeable_orders.has_new_orders = false;
 
-         self.trimmed_orders_buf.clear();
+        self.trimmed_orders_buf.clear();
         self.trimmed_orders_buf.extend(
-            self.best_mergeable_orders.best_orders
+            self.best_mergeable_orders
+                .best_orders
                 .iter()
                 .filter(|o| match &o.order {
-                    MergeableOrder::Tx(tx) => !self.base_txs_set.contains(tx.transaction.as_slice()),
+                    MergeableOrder::Tx(tx) => {
+                        !self.base_txs_set.contains(tx.transaction.as_slice())
+                    }
                     MergeableOrder::Bundle(b) => {
                         !b.transactions.iter().any(|t| self.base_txs_set.contains(t.as_slice()))
                     }
                 })
-                .cloned()
+                .cloned(),
         );
 
         trace!(count = self.trimmed_orders_buf.len(), "found orders");
@@ -526,7 +535,8 @@ fn order_to_mergeable(
             }
 
             let mergeable_tx =
-                MergeableTransaction { transaction: raw_tx.0.clone(), can_revert: tx.can_revert }.into();
+                MergeableTransaction { transaction: raw_tx.0.clone(), can_revert: tx.can_revert }
+                    .into();
             Ok(mergeable_tx)
         }
         Order::Bundle(bundle) => {
@@ -714,16 +724,17 @@ mod tests {
 
     use alloy_primitives::{Address, U256, map::HashMap};
     use helix_common::{RelayConfig, chain_info::ChainInfo, local_cache::LocalCache};
-    use helix_types::{ExecutionPayload, MergeableOrder, MergeableOrders, MergeableOrdersWithPref, MergeableTransaction, TestRandom};
+    use helix_types::{
+        ExecutionPayload, MergeableOrder, MergeableOrders, MergeableOrdersWithPref,
+        MergeableTransaction, TestRandom,
+    };
     use rand::rng;
 
     use crate::auctioneer::{block_merger::BlockMerger, submit_block::MergeData};
 
-
     #[test]
     fn test_fetch_merge_request() {
-
-        let curr_bid_slot =  1;
+        let curr_bid_slot = 1;
         let chain_info = ChainInfo::for_hoodi();
         let local_cache = LocalCache::new_test();
         let config = RelayConfig::empty_for_test();
@@ -732,7 +743,6 @@ mod tests {
 
         let mut random = rng();
 
-        
         let payload = ExecutionPayload::random_for_test(&mut random);
         let base_hash = payload.block_hash;
 
@@ -747,7 +757,6 @@ mod tests {
 
         let mo = MergeableOrders { origin: Address::random(), orders, blobs: HashMap::new() };
 
-
         let merge_data = MergeData {
             is_top_bid: true,
             slot: 1,
@@ -756,10 +765,7 @@ mod tests {
             proposer_fee_recipient: Address::random(),
             parent_beacon_block_root: None,
             execution_payload: payload,
-            merging_data: MergeableOrdersWithPref {
-                allow_appending: true,
-                orders: mo,
-            },
+            merging_data: MergeableOrdersWithPref { allow_appending: true, orders: mo },
         };
 
         let s = Instant::now();
@@ -774,7 +780,5 @@ mod tests {
         let res = bm.fetch_merge_request();
         assert!(res.is_some());
         println!("{}", s.elapsed().as_micros());
-
     }
-
 }

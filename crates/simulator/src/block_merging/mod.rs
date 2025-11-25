@@ -1,4 +1,7 @@
-use std::{collections::{HashMap, HashSet}, time::Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Instant,
+};
 
 use alloy_consensus::{SignableTransaction, Transaction, TxEip1559};
 use alloy_eips::{eip7685::RequestsOrHash, eip7840::BlobParams};
