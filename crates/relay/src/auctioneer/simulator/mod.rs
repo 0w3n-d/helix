@@ -10,7 +10,6 @@ use helix_types::{
     ExecutionPayload, ExecutionRequests, MergeableOrderWithOrigin, SignedBidSubmission,
     SubmissionVersion,
 };
-use serde_json::json;
 use tokio::sync::oneshot;
 
 use crate::auctioneer::types::SubmissionResult;
