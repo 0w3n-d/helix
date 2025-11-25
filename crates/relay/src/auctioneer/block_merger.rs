@@ -13,7 +13,7 @@ use helix_types::{
 };
 use rustc_hash::{FxBuildHasher, FxHashSet};
 use serde_json::json;
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 use zstd::zstd_safe::WriteBuf;
 
 use crate::auctioneer::{
@@ -63,6 +63,14 @@ pub struct BlockMerger {
     last_merge_request_time_ms: u64,
     base_txs_set: FxHashSet<Bytes>,
     trimmed_orders_buf: Vec<MergeableOrderWithOrigin>,
+    inserted_orders_count: usize,
+    inserted_appendable_blocks_count: usize,
+    updated_base_block_count: usize,
+    fetch_merge_request_count: usize,
+    proceeding_merge_request_count: usize,
+    no_base_block_count: usize,
+    no_appendable_block_data_count: usize,
+    found_orders_count: usize,
 }
 
 impl BlockMerger {
@@ -85,12 +93,21 @@ impl BlockMerger {
             last_merge_request_time_ms: 0,
             base_txs_set: FxHashSet::with_capacity_and_hasher(400, FxBuildHasher::default()),
             trimmed_orders_buf: Vec::with_capacity(400),
+            inserted_orders_count: 0,
+            inserted_appendable_blocks_count: 0,
+            updated_base_block_count: 0,
+            fetch_merge_request_count: 0,
+            proceeding_merge_request_count: 0,
+            no_base_block_count: 0,
+            no_appendable_block_data_count: 0,
+            found_orders_count: 0,
         }
     }
 }
 
 impl BlockMerger {
     pub fn on_new_slot(&mut self, bid_slot: u64) {
+        info!(old_slot = %self.curr_bid_slot, new_slot = %bid_slot, fetch_merge_request_count = %self.fetch_merge_request_count, proceeding_merge_request_count = %self.proceeding_merge_request_count, no_base_block_count = %self.no_base_block_count, no_appendable_block_data_count = %self.no_appendable_block_data_count, found_orders_count = %self.found_orders_count, "resetting block merger slot");
         self.curr_bid_slot = bid_slot;
         self.best_merged_block = None;
         self.best_mergeable_orders.reset();
@@ -100,6 +117,15 @@ impl BlockMerger {
         self.last_merge_request_time_ms = 0;
         self.base_txs_set.clear();
         self.trimmed_orders_buf.clear();
+        self.found_orders_count = 0;
+        self.inserted_orders_count = 0;
+        self.inserted_appendable_blocks_count = 0;
+        self.updated_base_block_count = 0;
+        self.fetch_merge_request_count = 0;
+        self.proceeding_merge_request_count = 0;
+        self.no_base_block_count = 0;
+        self.no_appendable_block_data_count = 0;
+        self.found_orders_count = 0;
     }
 
     pub fn get_header(&self, original_bid: &PayloadHeaderData) -> Option<PayloadHeaderData> {
@@ -131,6 +157,7 @@ impl BlockMerger {
     pub fn update_base_block(&mut self, base_block: BlockHash) {
         if let Some(base_block_data) = self.appendable_blocks.get(&base_block) {
             trace!(%base_block,"updating base block");
+            self.updated_base_block_count += 1;
             self.base_block = Some(base_block);
             self.has_new_base_block = true;
             self.base_txs_set.clear();
@@ -143,12 +170,14 @@ impl BlockMerger {
     pub fn insert_merge_data(&mut self, merging_data: MergeData) {
         if !merging_data.merging_data.orders.orders.is_empty() {
             trace!(%merging_data.block_hash,"inserting merge orders from block");
+            self.inserted_orders_count += 1;
             self.best_mergeable_orders
                 .insert_orders(merging_data.block_value, merging_data.merging_data.orders);
         }
 
         if merging_data.merging_data.allow_appending {
             trace!(%merging_data.block_hash,"inserting new appendable block data");
+            self.inserted_appendable_blocks_count += 1;
             self.insert_appendable_block_data(
                 merging_data.slot,
                 &merging_data.block_hash,
@@ -162,21 +191,25 @@ impl BlockMerger {
 
     pub fn fetch_merge_request(&mut self) -> Option<BlockMergeRequest> {
         trace!("fetching merge request");
+        self.fetch_merge_request_count += 1;
         if !self.should_request_merge() {
             trace!("should not request merge");
             return None;
         }
 
         trace!("proceeding with merge request");
+        self.proceeding_merge_request_count += 1;
 
         let start_time = Instant::now();
         let Some(base_block_hash) = self.base_block else {
             error!("no base block set for merge request");
+            self.no_base_block_count += 1;
             return None;
         };
 
         let Some(base_block) = self.appendable_blocks.get(&base_block_hash) else {
             error!(%base_block_hash, "could not find base block data for merge request");
+            self.no_appendable_block_data_count += 1;
             return None;
         };
         
@@ -196,6 +229,7 @@ impl BlockMerger {
         );
 
         trace!(count = self.trimmed_orders_buf.len(), "found orders");
+        self.found_orders_count += 1;
 
         let merge_request = BlockMergeRequest {
             bid_slot: base_block.slot,
