@@ -76,6 +76,7 @@ pub struct BlockMerger {
     proceeding_merge_request_count: usize,
     no_base_block_count: usize,
     no_appendable_block_data_count: usize,
+    no_additional_orders_count: usize,
     found_orders_count: usize,
 }
 
@@ -106,6 +107,7 @@ impl BlockMerger {
             proceeding_merge_request_count: 0,
             no_base_block_count: 0,
             no_appendable_block_data_count: 0,
+            no_additional_orders_count: 0,
             found_orders_count: 0,
         }
     }
@@ -131,6 +133,7 @@ impl BlockMerger {
         self.proceeding_merge_request_count = 0;
         self.no_base_block_count = 0;
         self.no_appendable_block_data_count = 0;
+        self.no_additional_orders_count = 0;
         self.found_orders_count = 0;
     }
 
@@ -236,6 +239,12 @@ impl BlockMerger {
                 })
                 .cloned(),
         );
+
+        if self.trimmed_orders_buf.is_empty() {
+            trace!("no additional orders to merge");
+            self.no_additional_orders_count += 1;
+            return None;
+        }
 
         trace!(count = self.trimmed_orders_buf.len(), "found orders");
         self.found_orders_count += 1;
