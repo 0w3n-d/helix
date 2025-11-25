@@ -20,7 +20,7 @@ use crate::{
 #[derive(Metrics)]
 #[metrics(scope = "helix.simulator.merging")]
 pub(crate) struct MergingMetrics {
-        /// How long it took from api call to execution
+    /// How long it took from api call to execution
     pub(crate) prep_to_execute_us: Histogram,
     /// How long it took to execture the base block
     pub(crate) execute_base_block: Histogram,
