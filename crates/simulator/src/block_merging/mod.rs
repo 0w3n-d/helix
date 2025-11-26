@@ -298,7 +298,15 @@ impl BlockMergingApi {
         let start_time = Instant::now();
 
         let recovered_orders: Vec<MergeableOrderRecovered> =
-            merging_data.into_par_iter().filter_map(|order| order.recover().ok()).collect();
+            merging_data.into_par_iter().filter_map(|order| {
+                match order.recover() {
+                    Ok(tx) => Some(tx),
+                    Err(e) => {
+                        debug!(target: "rpc::relay::block_merging", %e, "Error recovering mergeable order");
+                        None
+                    },
+                }
+            }).collect();
 
         debug!(
             target: "rpc::relay::block_merging",
