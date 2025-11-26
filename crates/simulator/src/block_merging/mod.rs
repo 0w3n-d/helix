@@ -72,6 +72,7 @@ impl BlockMergingApi {
             block_hash=%base_block_hash,
             tx_count=%request.execution_payload.payload_inner.payload_inner.transactions.len(),
             proposer_value=%request.original_value,
+            merging_data_count=%request.merging_data.len(),
             "Merging block v1",
         );
         let block: Block =
