@@ -66,6 +66,7 @@ pub struct BlockMergeRequestRef<'a> {
     pub merging_data: &'a [MergeableOrderWithOrigin],
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BlockMergeRequest {
     pub bid_slot: u64,
     /// The serialized request

@@ -6,7 +6,7 @@ use reqwest::{
     RequestBuilder,
     header::{HeaderMap, HeaderValue},
 };
-use serde::de::DeserializeOwned;
+use serde::de::{self, DeserializeOwned};
 use serde_json::{Value, json};
 use tracing::{debug, error};
 
@@ -130,6 +130,8 @@ impl SimulatorClient {
             "method": "relay_mergeBlockV1",
             "params": [request.request]
         });
+
+        debug!(?rpc_payload, "sending merge request");
 
         let to_send = to_send.json(&rpc_payload);
 

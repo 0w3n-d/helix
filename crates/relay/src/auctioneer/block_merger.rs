@@ -764,6 +764,16 @@ mod tests {
             }));
         }
 
+        orders.push(MergeableOrder::Tx(MergeableTransaction {
+            transaction: vec![0u8; 10].into(),
+            can_revert: false,
+        }));
+
+        orders.push(MergeableOrder::Tx(MergeableTransaction {
+            transaction: vec![1u8; 10].into(),
+            can_revert: true,
+        }));
+
         let mo = MergeableOrders { origin: Address::random(), orders, blobs: HashMap::new() };
 
         let merge_data = MergeData {
@@ -787,6 +797,7 @@ mod tests {
 
         let s = Instant::now();
         let res = bm.fetch_merge_request();
+        println!("{:?}", res);
         assert!(res.is_some());
         println!("{}", s.elapsed().as_micros());
     }
