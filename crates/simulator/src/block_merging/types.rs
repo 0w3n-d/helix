@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
 use alloy_eips::{Decodable2718, eip2718::Eip2718Error};
-use alloy_primitives::{Address, B256, U256};
+use alloy_primitives::{Address, B256, Bytes, U256};
 use alloy_rpc_types::{beacon::requests::ExecutionRequestsV4, engine::ExecutionPayloadV3};
-use bytes::Bytes;
 use reth_ethereum::{evm::EthEvmConfig, primitives::SignedTransaction, provider::ProviderError};
 use reth_node_builder::ConfigureEvm;
 use reth_primitives::{NodePrimitives, Recovered};
@@ -311,12 +310,67 @@ mod tests {
 
     #[test]
     fn test_recover_transaction() {
-        // Example signed transaction (EIP-2718 encoded)
-        let tx_bytes = hex::decode("0x02f8b583088bb081cf8477359400850ba43b7400830c3500941d150609ee9edcc6143506ba55a4faaedd562cd980b844ddd5e1b200000000000000000000000000000000000000000000000000000000000000000000000000000000000000005bd70c4656846bda310031226d533f955acace4ac001a09704720a23f79ebadea0bce66aede82e8370454c5b010cacc961021e74efb0c7a01f57040c0bfddc02b7145320e206304c53927a781dd71f422d7b1fb55fe0f234").unwrap();
-        let tx_bytes = Bytes::from(tx_bytes);
+
+        let tx_bytes_ascii = [48, 120, 48, 50, 102, 56, 55, 53, 56, 51, 48, 56, 56, 98, 98, 48, 56, 51, 48, 52, 56, 98, 56, 97, 56, 52, 51, 98, 57, 97, 99, 97, 48, 48, 56, 52, 51, 98, 57, 97, 99, 97, 48, 48, 56, 51, 50, 54, 50, 53, 97, 48, 57, 52, 99, 101, 49, 99, 52, 100, 56, 52, 100, 56, 100, 55, 97, 54, 50, 98, 102, 55, 56, 99, 51, 55, 52, 102, 55, 55, 53, 99, 49, 99, 56, 48, 50, 102, 54, 101, 48, 99, 56, 98, 56, 48, 56, 52, 48, 48, 48, 100, 56, 56, 56, 55, 99, 48, 56, 48, 97, 48, 54, 52, 97, 49, 54, 97, 97, 53, 102, 49, 54, 102, 98, 99, 98, 53, 54, 97, 98, 97, 55, 51, 99, 50, 100, 56, 48, 51, 99, 56, 99, 102, 99, 100, 101, 99, 57, 52, 53, 49, 101, 100, 49, 99, 55, 101, 52, 50, 98, 52, 55, 55, 48, 48, 50, 57, 97, 100, 53, 57, 51, 101, 55, 48, 97, 48, 54, 99, 101, 55, 97, 98, 53, 57, 56, 48, 98, 52, 98, 54, 57, 56, 55, 101, 99, 53, 98, 54, 54, 48, 100, 50, 52, 49, 49, 52, 57, 52, 50, 54, 98, 49, 56, 51, 49, 55, 97, 98, 101, 48, 102, 99, 97, 55, 49, 52, 53, 56, 48, 102, 50, 98, 48, 54, 50, 52, 55, 100, 57, 100];
+        let hex_string = String::from_utf8(tx_bytes_ascii.to_vec()).expect("Invalid UTF-8");
+
+        // let tx_bytes = hex::decode("0x02f8b583088bb081cf8477359400850ba43b7400830c3500941d150609ee9edcc6143506ba55a4faaedd562cd980b844ddd5e1b200000000000000000000000000000000000000000000000000000000000000000000000000000000000000005bd70c4656846bda310031226d533f955acace4ac001a09704720a23f79ebadea0bce66aede82e8370454c5b010cacc961021e74efb0c7a01f57040c0bfddc02b7145320e206304c53927a781dd71f422d7b1fb55fe0f234").unwrap();
+        let tx_bytes = Bytes::from(hex::decode(hex_string.trim_start_matches("0x")).expect("Invalid hex"));
 
         let recovered_tx = recover_transaction(&tx_bytes).expect("Failed to recover transaction");
 
         println!("Recovered transaction: {:?}", recovered_tx);
+    }
+
+    #[test]
+    fn test_bytes_hex_deserialization() {
+        // Test that Bytes deserializes from hex string correctly
+        // This is a complete, valid EIP-2718 Type 2 transaction
+        let json = r#"{"transaction":"0x02f8b583088bb081cf8477359400850ba43b7400830c3500941d150609ee9edcc6143506ba55a4faaedd562cd980b844ddd5e1b200000000000000000000000000000000000000000000000000000000000000000000000000000000000000005bd70c4656846bda310031226d533f955acace4ac001a09704720a23f79ebadea0bce66aede82e8370454c5b010cacc961021e74efb0c7a01f57040c0bfddc02b7145320e206304c53927a781dd71f422d7b1fb55fe0f234","can_revert":false,"origin":"0x0000000000000000000000000000000000000001"}"#;
+        
+        let order: MergeableTransaction<Bytes> = serde_json::from_str(json).unwrap();
+        
+        // Verify the bytes are actual transaction bytes, not ASCII
+        assert_eq!(order.transaction[0], 0x02); // EIP-2718 type 2
+        assert_ne!(order.transaction[0], 48); // Not ASCII '0'
+        assert_ne!(order.transaction[1], 120); // Not ASCII 'x'
+        
+        println!("Transaction length: {}", order.transaction.len());
+        println!("First bytes: {:?}", &order.transaction[..8]);
+        
+        // Verify we can recover the transaction
+        let recovered = recover_transaction(&order.transaction).expect("Should recover transaction");
+        println!("Successfully recovered transaction: {:?}", recovered);
+    }
+
+    #[test]
+    fn test_mergeable_order_json_roundtrip() {
+        use alloy_primitives::hex;
+        
+        // Create a mergeable transaction with raw bytes
+        let tx_hex = "02f87583088bb083048b8a843b9aca00843b9aca0083262a094ce1c4d84d8d7a62bf78c374f775c1c802f6e0c8b8084000d8887c080a064a16aa5f16fbcb56aba73c2d803c8cfcdec9451ed1c7e42b477029ad593e70a06ce7ab5980b4b6987ec5b660d24114942b18317abe0fca71458f2b06247d9d";
+        let tx_bytes = Bytes::from(hex::decode(tx_hex).unwrap());
+        
+        let order = MergeableOrder::Tx(MergeableTransaction {
+            transaction: tx_bytes.clone(),
+            can_revert: false,
+            origin: Address::ZERO,
+        });
+        
+        // Serialize to JSON
+        let json = serde_json::to_string(&order).unwrap();
+        println!("Serialized: {}", json);
+        
+        // Deserialize back
+        let deserialized: MergeableOrder<Bytes> = serde_json::from_str(&json).unwrap();
+        
+        // Verify the bytes match
+        match deserialized {
+            MergeableOrder::Tx(tx) => {
+                assert_eq!(tx.transaction, tx_bytes);
+                assert_eq!(tx.transaction[0], 0x02);
+            }
+            _ => panic!("Expected Tx variant"),
+        }
     }
 }
