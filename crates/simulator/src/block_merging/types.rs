@@ -194,7 +194,7 @@ impl MergeableOrderBytes {
 
 fn recover_transaction(tx_bytes: &Bytes) -> Result<Recovered<SignedTx>, RecoverError> {
     let mut buf = tx_bytes.as_ref();
-    debug!("Recovering transaction from bytes: {:?}", buf);
+    debug!(target: "rpc::relay::block_merging", "Recovering transaction from bytes: {:?}", buf);
     let tx = <SignedTx as Decodable2718>::decode_2718(&mut buf)?;
     // If buffer was not fully consumed, the transaction is invalid.
     if !buf.is_empty() {
