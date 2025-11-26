@@ -9,6 +9,7 @@ use reth_node_builder::ConfigureEvm;
 use reth_primitives::{NodePrimitives, Recovered};
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
+use tracing::debug;
 
 pub(crate) type SignedTx = <<EthEvmConfig as ConfigureEvm>::Primitives as NodePrimitives>::SignedTx;
 pub(crate) type RecoveredTx = Recovered<SignedTx>;
@@ -193,6 +194,7 @@ impl MergeableOrderBytes {
 
 fn recover_transaction(tx_bytes: &Bytes) -> Result<Recovered<SignedTx>, RecoverError> {
     let mut buf = tx_bytes.as_ref();
+    debug!("Recovering transaction from bytes: {:?}", buf);
     let tx = <SignedTx as Decodable2718>::decode_2718(&mut buf)?;
     // If buffer was not fully consumed, the transaction is invalid.
     if !buf.is_empty() {
@@ -274,7 +276,7 @@ pub struct BuilderInclusionResult {
 
 #[cfg(test)]
 mod tests {
-    use alloy_primitives::address;
+    use alloy_primitives::{address, hex};
 
     use super::*;
 
@@ -305,5 +307,16 @@ mod tests {
                 deserialized_map.get(&address).expect(&format!("address {address} is missing"));
             assert_eq!(private_key.0.address(), expected_address);
         }
+    }
+
+    #[test]
+    fn test_recover_transaction() {
+        // Example signed transaction (EIP-2718 encoded)
+        let tx_bytes = hex::decode("0x02f8b583088bb081cf8477359400850ba43b7400830c3500941d150609ee9edcc6143506ba55a4faaedd562cd980b844ddd5e1b200000000000000000000000000000000000000000000000000000000000000000000000000000000000000005bd70c4656846bda310031226d533f955acace4ac001a09704720a23f79ebadea0bce66aede82e8370454c5b010cacc961021e74efb0c7a01f57040c0bfddc02b7145320e206304c53927a781dd71f422d7b1fb55fe0f234").unwrap();
+        let tx_bytes = Bytes::from(tx_bytes);
+
+        let recovered_tx = recover_transaction(&tx_bytes).expect("Failed to recover transaction");
+
+        println!("Recovered transaction: {:?}", recovered_tx);
     }
 }
