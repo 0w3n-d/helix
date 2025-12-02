@@ -500,7 +500,11 @@ fn decode_default(
             builder_address: upgraded.fee_recipient(),
             merge_orders: vec![],
         }),
-        None => None,
+        None => Some(BlockMergingData {
+            allow_appending: true,
+            builder_address: upgraded.fee_recipient(),
+            merge_orders: vec![],
+        }),
     };
     verify_and_validate(&mut upgraded, skip_sigverify, chain_info)?;
     Ok((Submission::Full(upgraded), merging_data))
