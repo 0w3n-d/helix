@@ -2,25 +2,45 @@ use std::{hash::Hasher, sync::Arc};
 
 use alloy_eips::eip7691::MAX_BLOBS_PER_BLOCK_ELECTRA;
 use alloy_primitives::{Address, B256};
+use lh_types::{ForkName, ForkVersionDecode};
 use rustc_hash::{FxHashMap, FxHasher};
 use serde::{Deserialize, Serialize};
+use ssz::{Decode, DecodeError};
 use ssz_derive::{Decode, Encode};
 use tree_hash::TreeHash;
 
 use crate::{
     BidTrace, Blob, BlobsBundle, BlobsBundleV1, BlobsBundleV2, BlsPublicKeyBytes,
     BlsSignatureBytes, ExecutionPayload, SignedBidSubmission, SignedBidSubmissionElectra,
-    SignedBidSubmissionFulu, bid_submission,
+    SignedBidSubmissionFulu,
+    bid_adjustment_data::BidAdjustmentData,
+    bid_submission,
     fields::{ExecutionRequests, KzgCommitment, KzgProof, Transaction},
 };
 
 /// A bid submission where transactions and blobs may be replaced by hashes instead of payload
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
-#[ssz(enum_behaviour = "transparent")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DehydratedBidSubmission {
     Electra(DehydratedBidSubmissionElectra),
     Fulu(DehydratedBidSubmissionFulu),
+}
+
+impl ForkVersionDecode for DehydratedBidSubmission {
+    fn from_ssz_bytes_by_fork(bytes: &[u8], fork: ForkName) -> Result<Self, DecodeError> {
+        match fork {
+            ForkName::Base |
+            ForkName::Altair |
+            ForkName::Bellatrix |
+            ForkName::Capella |
+            ForkName::Deneb |
+            ForkName::Gloas => Err(DecodeError::NoMatchingVariant),
+            ForkName::Electra => DehydratedBidSubmissionElectra::from_ssz_bytes(bytes)
+                .map(DehydratedBidSubmission::Electra),
+            ForkName::Fulu => DehydratedBidSubmissionFulu::from_ssz_bytes(bytes)
+                .map(DehydratedBidSubmission::Fulu),
+        }
+    }
 }
 
 pub struct HydratedData {
@@ -118,6 +138,48 @@ pub struct DehydratedBidSubmissionFulu {
     execution_requests: Arc<ExecutionRequests>,
     signature: BlsSignatureBytes,
     tx_root: Option<B256>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
+pub struct DehydratedBidSubmissionFuluWithAdjustments {
+    message: BidTrace,
+    execution_payload: ExecutionPayload,
+    blobs_bundle: DehydratedBlobsFulu,
+    execution_requests: Arc<ExecutionRequests>,
+    signature: BlsSignatureBytes,
+    tx_root: Option<B256>,
+    bid_adjustment_data: BidAdjustmentData,
+}
+
+impl DehydratedBidSubmissionFuluWithAdjustments {
+    pub fn split(self) -> (DehydratedBidSubmission, BidAdjustmentData) {
+        (
+            DehydratedBidSubmission::Fulu(DehydratedBidSubmissionFulu {
+                message: self.message,
+                execution_payload: self.execution_payload,
+                blobs_bundle: self.blobs_bundle,
+                execution_requests: self.execution_requests,
+                signature: self.signature,
+                tx_root: self.tx_root,
+            }),
+            self.bid_adjustment_data,
+        )
+    }
+}
+
+impl ForkVersionDecode for DehydratedBidSubmissionFuluWithAdjustments {
+    fn from_ssz_bytes_by_fork(bytes: &[u8], fork: ForkName) -> Result<Self, DecodeError> {
+        match fork {
+            ForkName::Base |
+            ForkName::Altair |
+            ForkName::Bellatrix |
+            ForkName::Capella |
+            ForkName::Deneb |
+            ForkName::Gloas |
+            ForkName::Electra => Err(DecodeError::NoMatchingVariant),
+            ForkName::Fulu => DehydratedBidSubmissionFuluWithAdjustments::from_ssz_bytes(bytes),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
