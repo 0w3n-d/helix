@@ -13,11 +13,7 @@ use helix_common::{
     utils::{utcnow_ns, utcnow_sec},
 };
 use helix_types::{
-    BidAdjustmentData, BlockMergingData, BlsPublicKey, BlsPublicKeyBytes, DehydratedBidSubmission,
-    DehydratedBidSubmissionFuluWithAdjustments, ExecPayload, ForkName, MergeableOrdersWithPref,
-    SigError, SignedBidSubmission, SignedBidSubmissionFuluWithAdjustments,
-    SignedBidSubmissionWithMergingData, SignedBlindedBeaconBlock, SignedValidatorRegistration,
-    SubmissionVersion,
+    BidAdjustmentData, BlockMergingData, BlsPublicKey, BlsPublicKeyBytes, DehydratedBidSubmission, DehydratedBidSubmissionFuluWithAdjustments, ExecPayload, ForkName, MergeableOrders, MergeableOrdersWithPref, SigError, SignedBidSubmission, SignedBidSubmissionFuluWithAdjustments, SignedBidSubmissionWithMergingData, SignedBlindedBeaconBlock, SignedValidatorRegistration, SubmissionVersion
 };
 use http::HeaderValue;
 use tracing::{error, info, info_span, trace};
