@@ -1,15 +1,15 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use axum::{Router, routing::get};
-use helix_common::{NetworkConfig, RelayConfig, chain_info::ChainInfo, local_cache::LocalCache};
+use helix_common::{RelayConfig, local_cache::LocalCache};
 use parking_lot::RwLock;
 use tokio::{net::TcpListener, sync::broadcast};
 use tracing::{debug, error, info};
 
 use crate::{
-    beacon::{beacon_client::BeaconClient, multi_beacon_client::MultiBeaconClient},
     database::postgres::postgres_db_service::PostgresDatabaseService,
     housekeeper::{ChainEventUpdater, CurrentSlotInfo},
+    start_beacon_client,
     website::{
         handlers,
         models::DeliveredPayload,
@@ -40,24 +40,9 @@ impl WebsiteService {
     ) -> Result<(), Box<dyn std::error::Error>> {
         info!("Starting WebsiteService");
 
-        // ChainInfo
-        let chain_info = Arc::new(match config.network_config {
-            NetworkConfig::Mainnet => ChainInfo::for_mainnet(),
-            NetworkConfig::Sepolia => ChainInfo::for_sepolia(),
-            NetworkConfig::Holesky => ChainInfo::for_holesky(),
-            NetworkConfig::Hoodi => ChainInfo::for_hoodi(),
-            NetworkConfig::Custom { ref dir_path, ref genesis_validator_root, genesis_time } => {
-                ChainInfo::for_custom(dir_path.clone(), *genesis_validator_root, genesis_time)
-            }
-        });
-
-        // Start a MultiBeaconClient
-        let beacon_clients: Vec<Arc<BeaconClient>> = config
-            .beacon_clients
-            .iter()
-            .map(|bc_config| Arc::new(BeaconClient::from_config(bc_config.clone())))
-            .collect();
-        let multi_beacon_client = Arc::new(MultiBeaconClient::new(beacon_clients));
+        let multi_beacon_client = start_beacon_client(&config);
+        let chain_info = multi_beacon_client.load_chain_info().await;
+        let chain_info = Arc::new(chain_info);
 
         // Website state
         let current_slot_info = CurrentSlotInfo::new();
@@ -237,18 +222,18 @@ impl WebsiteService {
             link_etherscan: state.website_config.link_etherscan.clone(),
             link_data_api: state.website_config.link_data_api.clone(),
             capella_fork_version: alloy_primitives::hex::encode(
-                state.chain_info.context.capella_fork_version,
+                state.chain_info.spec.capella_fork_version,
             ),
             bellatrix_fork_version: alloy_primitives::hex::encode(
-                state.chain_info.context.bellatrix_fork_version,
+                state.chain_info.spec.bellatrix_fork_version,
             ),
             genesis_fork_version: alloy_primitives::hex::encode(
-                state.chain_info.context.genesis_fork_version,
+                state.chain_info.spec.genesis_fork_version,
             ),
             genesis_validators_root: alloy_primitives::hex::encode(
                 state.chain_info.genesis_validators_root.as_ref() as &[u8],
             ),
-            builder_signing_domain: state.chain_info.context.get_builder_domain().to_string(),
+            builder_signing_domain: state.chain_info.spec.get_builder_domain().to_string(),
         })
     }
 }

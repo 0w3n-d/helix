@@ -1,3 +1,4 @@
+mod bid_adjustment_data;
 mod bid_submission;
 mod blobs;
 mod block_merging;
@@ -7,13 +8,13 @@ mod error;
 mod execution_payload;
 mod fields;
 mod hydration;
-mod spec;
 mod test_utils;
 mod utils;
 mod validator;
 
 use std::sync::Arc;
 
+pub use bid_adjustment_data::BidAdjustmentData;
 pub use bid_submission::*;
 pub use blobs::*;
 pub use block_merging::*;
@@ -26,11 +27,10 @@ pub use hydration::*;
 pub use lh_kzg::{KzgCommitment, KzgProof};
 pub use lh_test_random::TestRandom;
 pub use lh_types::{
-    EthSpec, ForkVersionDecode, MainnetEthSpec, SignedRoot, fork_name::ForkName,
-    payload::ExecPayload, test_utils::TestRandom,
+    Config as LhConfig, EthSpec, ForkVersionDecode, MainnetEthSpec, SignedRoot,
+    fork_name::ForkName, payload::ExecPayload, test_utils::TestRandom,
 };
 use serde::{Deserialize, Serialize};
-pub use spec::*;
 use ssz_derive::{Decode, Encode};
 pub use test_utils::*;
 pub use validator::*;
@@ -38,6 +38,7 @@ pub use validator::*;
 pub type Slot = lh_types::Slot;
 pub type Epoch = lh_types::Epoch;
 pub type Domain = lh_types::Domain;
+pub type ChainSpec = lh_types::ChainSpec;
 
 // Signing
 pub type BlsPublicKey = lh_types::PublicKey;
@@ -99,4 +100,8 @@ pub struct SignedMessage<T: ssz::Encode + ssz::Decode> {
 
 pub fn mock_public_key_bytes() -> BlsPublicKeyBytes {
     BlsPublicKeyBytes::default()
+}
+
+pub fn spec_from_config(config: lh_types::Config) -> ChainSpec {
+    ChainSpec::from_config::<MainnetEthSpec>(&config).unwrap()
 }
