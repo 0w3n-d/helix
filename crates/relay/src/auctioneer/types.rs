@@ -142,7 +142,7 @@ impl PayloadEntry {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PayloadHeaderData {
     pub payload_and_blobs: Arc<PayloadAndBlobs>,
     pub bid_data: PayloadBidData,
