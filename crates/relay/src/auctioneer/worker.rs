@@ -4,6 +4,7 @@ use std::{
 };
 
 use alloy_primitives::B256;
+use ethers::core::k256::sha2::digest::typenum::Or;
 use helix_common::{
     GetPayloadTrace, SubmissionTrace,
     chain_info::ChainInfo,
@@ -13,7 +14,7 @@ use helix_common::{
     utils::{utcnow_ns, utcnow_sec},
 };
 use helix_types::{
-    BidAdjustmentData, BlockMergingData, BlsPublicKey, BlsPublicKeyBytes, DehydratedBidSubmission, DehydratedBidSubmissionFuluWithAdjustments, ExecPayload, ForkName, MergeableOrders, MergeableOrdersWithPref, SigError, SignedBidSubmission, SignedBidSubmissionFuluWithAdjustments, SignedBidSubmissionWithMergingData, SignedBlindedBeaconBlock, SignedValidatorRegistration, SubmissionVersion
+    BidAdjustmentData, BlockMergingData, BlsPublicKey, BlsPublicKeyBytes, DehydratedBidSubmission, DehydratedBidSubmissionFuluWithAdjustments, ExecPayload, ForkName, MergeableOrders, MergeableOrdersWithPref, Order, SigError, SignedBidSubmission, SignedBidSubmissionFuluWithAdjustments, SignedBidSubmissionWithMergingData, SignedBlindedBeaconBlock, SignedValidatorRegistration, SubmissionVersion, TransactionOrder
 };
 use http::HeaderValue;
 use tracing::{error, info, info_span, trace};
@@ -455,7 +456,7 @@ fn decode_dehydrated(
     body: bytes::Bytes,
     trace: &mut SubmissionTrace,
     skip_sigverify: bool,
-    merge_type: &Option<MergeType>,
+    _merge_type: &Option<MergeType>,
     fork: ForkName,
     with_adjustments: bool,
 ) -> Result<(Submission, Option<BlockMergingData>, Option<BidAdjustmentData>), BuilderApiError> {
@@ -477,19 +478,11 @@ fn decode_dehydrated(
 
     trace.decoded = utcnow_ns();
 
-    let merging_data = match merge_type {
-        Some(MergeType::Mergeable) => {
-            //Should this return an error instead?
-            error!("mergeable dehydrated submissions are not supported");
-            None
-        }
-        Some(MergeType::AppendOnly) => Some(BlockMergingData {
-            allow_appending: true,
-            builder_address: submission.fee_recipient(),
-            merge_orders: vec![],
-        }),
-        None => None,
-    };
+    let merging_data = Some(BlockMergingData {
+        allow_appending: true,
+        builder_address: submission.fee_recipient(),
+        merge_orders: vec![],
+    });
 
     Ok((Submission::Dehydrated(submission), merging_data, bid_adjustments))
 }
@@ -500,26 +493,13 @@ fn decode_merge(
     trace: &mut SubmissionTrace,
     skip_sigverify: bool,
     chain_info: &ChainInfo,
-    merge_type: &Option<MergeType>,
+    _merge_type: &Option<MergeType>,
 ) -> Result<(Submission, Option<BlockMergingData>, Option<BidAdjustmentData>), BuilderApiError> {
     let sub_with_merging: SignedBidSubmissionWithMergingData = decoder.decode(body)?;
     let mut upgraded = sub_with_merging.maybe_upgrade_to_fulu(chain_info.current_fork_name());
     trace.decoded = utcnow_ns();
-    let merging_data = match merge_type {
-        Some(MergeType::Mergeable) => Some(upgraded.merging_data),
-        //Handle append-only by creating empty mergeable orders
-        //this allows builder to switch between append-only and mergeable without changing
-        // submission alternatively we could reject or ignore append-only here if the
-        // submission is mergeable?
-        Some(MergeType::AppendOnly) => Some(BlockMergingData {
-            allow_appending: upgraded.merging_data.allow_appending,
-            builder_address: upgraded.merging_data.builder_address,
-            merge_orders: vec![],
-        }),
-        None => Some(upgraded.merging_data),
-    };
     verify_and_validate(&mut upgraded.submission, skip_sigverify, chain_info)?;
-    Ok((Submission::Full(upgraded.submission), merging_data, None))
+    Ok((Submission::Full(upgraded.submission), Some(upgraded.merging_data), None))
 }
 
 fn decode_default(
@@ -528,7 +508,7 @@ fn decode_default(
     trace: &mut SubmissionTrace,
     skip_sigverify: bool,
     chain_info: &ChainInfo,
-    merge_type: &Option<MergeType>,
+    _merge_type: &Option<MergeType>,
     with_adjustments: bool,
 ) -> Result<(Submission, Option<BlockMergingData>, Option<BidAdjustmentData>), BuilderApiError> {
     let (submission, bid_adjustments) = if with_adjustments {
@@ -543,24 +523,20 @@ fn decode_default(
     };
 
     let mut upgraded = submission.maybe_upgrade_to_fulu(chain_info.current_fork_name());
+    let num_tx = upgraded.execution_payload_ref().transactions.len();
+    let mut merge_orders = Vec::with_capacity(num_tx);
+    for i in 0..num_tx {
+        merge_orders.push(Order::Tx(TransactionOrder{
+            index: i,
+            can_revert: true,
+        }));
+    }
     trace.decoded = utcnow_ns();
-    let merging_data = match merge_type {
-        Some(MergeType::Mergeable) => {
-            //Should this return an error instead?
-            error!("mergeable dehydrated submissions are not supported");
-            None
-        }
-        Some(MergeType::AppendOnly) => Some(BlockMergingData {
-            allow_appending: true,
-            builder_address: upgraded.fee_recipient(),
-            merge_orders: vec![],
-        }),
-        None => Some(BlockMergingData {
-            allow_appending: true,
-            builder_address: upgraded.fee_recipient(),
-            merge_orders: vec![],
-        }),
-    };
+    let merging_data = Some(BlockMergingData {
+        allow_appending: true,
+        builder_address: upgraded.fee_recipient(),
+        merge_orders: merge_orders,
+    });
     verify_and_validate(&mut upgraded, skip_sigverify, chain_info)?;
     Ok((Submission::Full(upgraded), merging_data, bid_adjustments))
 }

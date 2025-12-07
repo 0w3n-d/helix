@@ -1,7 +1,7 @@
 use alloy_primitives::B256;
 use helix_common::api::proposer_api::GetHeaderParams;
 use tokio::sync::oneshot;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 use crate::{
     api::proposer::ProposerApiError,
@@ -35,7 +35,8 @@ impl Context {
         };
 
         if let Some(merged_bid) = self.block_merger.get_header(&original_bid) {
-            return Ok(merged_bid);
+            info!(%parent_hash, ?merged_bid, "returning merged block header");
+            return Ok(original_bid);
         }
 
         Ok(original_bid)
