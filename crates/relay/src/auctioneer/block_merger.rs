@@ -23,7 +23,7 @@ use zstd::zstd_safe::WriteBuf;
 
 use crate::auctioneer::{
     BlockMergeRequest, BlockMergeRequestRef, BlockMergeResponse, PayloadBidData, PayloadHeaderData,
-    submit_block::MergeData, types::PayloadEntry,
+    submit_block::MergeData, types::{PayloadEntry, Submission},
 };
 
 const MERGE_REQUEST_INTERVAL_MS: u64 = 50;
