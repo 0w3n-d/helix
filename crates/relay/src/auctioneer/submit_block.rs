@@ -9,7 +9,7 @@ use helix_types::{
     BlockMergingData, BlockValidationError, MergeableOrdersWithPref, Order, SignedBidSubmission, SubmissionVersion, TransactionOrder
 };
 use tokio::sync::oneshot;
-use tracing::{trace, warn};
+use tracing::{info, trace, warn};
 
 use crate::{
     api::builder::error::BuilderApiError,
@@ -169,6 +169,7 @@ impl Context {
             };
         
         if submission_data.merging_data.is_none() {
+            info!("generating merging data for submission");
             let num_txs = submission.execution_payload_ref().transactions.len();
             let mut orders = vec![];
             for i in 0..num_txs {
@@ -182,11 +183,20 @@ impl Context {
                 builder_address: submission.fee_recipient().into(),
                 merge_orders: orders,
             };
-            submission_data.merging_data = get_mergeable_orders(&submission, &merging_data).ok().map(|data| {
-                MergeableOrdersWithPref {
-                    orders: data,
-                    allow_appending: true,
-            }});
+            submission_data.merging_data = match get_mergeable_orders(&submission, &merging_data) {
+                Ok(data) => {
+                    Some(MergeableOrdersWithPref {
+                        orders: data,
+                        allow_appending: true,
+                    })
+                },
+                Err(err) => {
+                    warn!(%err, "failed to generate merging data for submission");
+                    None
+                }
+            };
+        } else {
+            info!("using provided merging data for submission");
         };
 
         let merging_data = submission_data.merging_data.map(|data| MergeData {
