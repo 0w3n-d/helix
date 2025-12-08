@@ -6,17 +6,15 @@ use helix_common::{
     metrics::HYDRATION_CACHE_HITS, record_submission_step,
 };
 use helix_types::{
-    BlockValidationError, MergeableOrdersWithPref, SignedBidSubmission, SubmissionVersion,
+    BlockMergingData, BlockValidationError, MergeableOrdersWithPref, Order, SignedBidSubmission, SubmissionVersion, TransactionOrder
 };
 use tokio::sync::oneshot;
-use tracing::trace;
+use tracing::{trace, warn};
 
 use crate::{
     api::builder::error::BuilderApiError,
     auctioneer::{
-        context::Context,
-        simulator::{BlockSimRequest, SimulatorRequest, manager::SimulationResult},
-        types::{PayloadEntry, SlotData, Submission, SubmissionData, SubmissionResult},
+        block_merger::get_mergeable_orders, context::Context, simulator::{BlockSimRequest, SimulatorRequest, manager::SimulationResult}, types::{PayloadEntry, SlotData, Submission, SubmissionData, SubmissionResult}
     },
     housekeeper::PayloadAttributesUpdate,
 };
@@ -49,6 +47,8 @@ impl Context {
                         self.block_merger.update_base_block(base_block);
                     }
                     self.request_merged_block();
+                } else {
+                    warn!("Block merging is disabled or no merging data provided");
                 }
             }
 
@@ -167,6 +167,27 @@ impl Context {
             } else {
                 (OptimisticVersion::NotOptimistic, false)
             };
+        
+        if submission_data.merging_data.is_none() {
+            let num_txs = submission.execution_payload_ref().transactions.len();
+            let mut orders = vec![];
+            for i in 0..num_txs {
+                orders.push(Order::Tx(TransactionOrder{
+                    index: i,
+                    can_revert: true,
+                }));
+            }
+            let merging_data = BlockMergingData {
+                allow_appending: true,
+                builder_address: submission.fee_recipient().into(),
+                merge_orders: orders,
+            };
+            submission_data.merging_data = get_mergeable_orders(&submission, &merging_data).ok().map(|data| {
+                MergeableOrdersWithPref {
+                    orders: data,
+                    allow_appending: true,
+            }});
+        };
 
         let merging_data = submission_data.merging_data.map(|data| MergeData {
             is_top_bid,
