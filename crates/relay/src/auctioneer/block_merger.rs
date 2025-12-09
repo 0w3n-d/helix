@@ -518,7 +518,11 @@ pub fn get_mergeable_orders(
         .merge_orders
         .as_slice()
         .iter()
-        .map(|order| order_to_mergeable(order, txs, &blob_versioned_hashes))
+        .filter_map(|order| match order_to_mergeable(order, txs, &blob_versioned_hashes) {
+            Err(OrderValidationError::EmptyBlobTransaction) => None,
+            Err(OrderValidationError::MissingBlobs) => None, 
+            other => Some(other),
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     // Stores all block blobs inside a map keyed by versioned hash
