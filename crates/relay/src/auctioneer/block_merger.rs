@@ -17,6 +17,7 @@ use helix_types::{
     Order, PayloadAndBlobs, SignedBidSubmission, Transactions,
 };
 use rustc_hash::{FxBuildHasher, FxHashSet};
+use serde::de;
 use serde_json::json;
 use tracing::{debug, error, info, trace, warn};
 use zstd::zstd_safe::WriteBuf;
@@ -600,6 +601,7 @@ fn validate_blobs(
     let mut missing_blobs =
         versioned_hashes.iter().map(|h| !blob_versioned_hashes.iter().any(|vh| vh == h));
     if missing_blobs.any(|f| f) {
+        debug!(%num_blobs, num_blob_versioned_hashes=%blob_versioned_hashes.len(), raw_tx=?raw_tx, "blob tx refs blobs not in the block");
         return Err(OrderValidationError::MissingBlobs);
     }
     Ok(())
