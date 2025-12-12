@@ -66,7 +66,34 @@ async fn get_top_bid(
     Extension(admin_service): Extension<AdminService>,
 ) -> Response {
     info!("Admin WebSocket connection attempt");
+    
+    // Log all headers for debugging
+    info!("Headers: {:?}", headers);
+    info!("Expected token: {}", admin_service.config.admin_token);
+    
+    // Check Authorization header first (for CLI tools like websocat)
+    if let Some(auth_header) = headers.get("authorization") {
+        info!("Found authorization header: {:?}", auth_header);
+        if let Ok(auth_str) = auth_header.to_str() {
+            info!("Authorization string: {}", auth_str);
+            if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                info!("Extracted token: {}", token);
+                if token == admin_service.config.admin_token {
+                    info!("Token matched! Upgrading to WebSocket");
+                    return ws.on_upgrade(move |socket| {
+                        let sub = admin_service.top_bid_tx_js.subscribe();
+                        push_top_bids(socket, sub)
+                    });
+                } else {
+                    info!("Token mismatch! Got: '{}', Expected: '{}'", token, admin_service.config.admin_token);
+                }
+            }
+        }
+    }
+    
+    // Check Sec-WebSocket-Protocol for browser clients
     if let Some(protocol) = headers.get("sec-websocket-protocol") {
+        info!("Found sec-websocket-protocol header: {:?}", protocol);
         if let Ok(protocol_str) = protocol.to_str() {
             if let Some(token) = protocol_str.strip_prefix("bearer.") {
                 if token == admin_service.config.admin_token {
@@ -81,6 +108,7 @@ async fn get_top_bid(
         }
     }
 
+    info!("Authentication failed - returning 401");
     (StatusCode::UNAUTHORIZED, "Invalid or missing bearer token").into_response()
 }
 
