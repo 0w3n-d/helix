@@ -33,7 +33,7 @@ pub async fn run_admin_service(
         post(enable_kill_switch).delete(disable_kill_switch),
     )
     .layer(Extension(admin_service.clone()))
-    .layer(ValidateRequestHeaderLayer::bearer(&config.admin_token));
+    .route_layer(ValidateRequestHeaderLayer::bearer(&config.admin_token));
 
     let ws = Router::new()
         .route("/admin/v1/top_bid", get(get_top_bid))
