@@ -12,6 +12,7 @@ use tracing::{debug, error, info};
 #[derive(Clone)]
 struct AdminService {
     auctioneer: Arc<LocalCache>,
+    config: RelayConfig,
     top_bid_tx_js: tokio::sync::broadcast::Sender<String>,
 }
 
@@ -22,6 +23,7 @@ pub async fn run_admin_service(
 ) {
     let admin_service = AdminService {
         auctioneer,
+        config: config.clone(),
         top_bid_tx_js,
     };
 
@@ -70,12 +72,12 @@ async fn get_top_bid(
     ws: WebSocketUpgrade,
     headers: HeaderMap,
     Extension(admin_service): Extension<Arc<AdminService>>,
-    Extension(config): Extension<RelayConfig>,
 ) -> Response {
+    info!("Admin WebSocket connection attempt");
     if let Some(protocol) = headers.get("sec-websocket-protocol") {
         if let Ok(protocol_str) = protocol.to_str() {
             if let Some(token) = protocol_str.strip_prefix("bearer.") {
-                if token == config.admin_token {
+                if token == admin_service.config.admin_token {
                     return ws
                         .protocols(["bearer"])
                         .on_upgrade(move |socket| {
