@@ -44,7 +44,7 @@ pub async fn run_admin_service(
 }
 
 async fn enable_kill_switch(
-    Extension(admin_service): Extension<Arc<AdminService>>,
+    Extension(admin_service): Extension<AdminService>,
 ) -> Result<impl IntoResponse, StatusCode> {
     admin_service.auctioneer.enable_kill_switch();
     info!("Kill switch enabled");
@@ -52,7 +52,7 @@ async fn enable_kill_switch(
 }
 
 async fn disable_kill_switch(
-    Extension(admin_service): Extension<Arc<AdminService>>,
+    Extension(admin_service): Extension<AdminService>,
 ) -> Result<impl IntoResponse, StatusCode> {
     admin_service.auctioneer.disable_kill_switch();
     info!("Kill switch disabled");
@@ -63,7 +63,7 @@ async fn disable_kill_switch(
 async fn get_top_bid(
     ws: WebSocketUpgrade,
     headers: HeaderMap,
-    Extension(admin_service): Extension<Arc<AdminService>>,
+    Extension(admin_service): Extension<AdminService>,
 ) -> Response {
     info!("Admin WebSocket connection attempt");
     if let Some(protocol) = headers.get("sec-websocket-protocol") {
