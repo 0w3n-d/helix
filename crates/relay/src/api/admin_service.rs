@@ -27,22 +27,14 @@ pub async fn run_admin_service(
         top_bid_tx_js,
     };
 
-    let rest = Router::new()
+    let router = Router::new()
     .route(
         "/admin/v1/killswitch",
         post(enable_kill_switch).delete(disable_kill_switch),
     )
-    .layer(Extension(admin_service.clone()))
-    .route_layer(ValidateRequestHeaderLayer::bearer(&config.admin_token));
-
-    let ws = Router::new()
-        .route("/admin/v1/top_bid", get(get_top_bid))
-        .layer(Extension(admin_service));
-
-    let router = Router::new()
-        .merge(rest)
-        .merge(ws);
-
+    // .route_layer(ValidateRequestHeaderLayer::bearer(&config.admin_token))
+    .route("/admin/v1/top_bid", get(get_top_bid))
+    .layer(Extension(admin_service));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:4050").await.unwrap();
     match axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>()).await {
