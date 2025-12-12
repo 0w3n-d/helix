@@ -97,8 +97,10 @@ async fn get_top_bid(
         if let Ok(protocol_str) = protocol.to_str() {
             if let Some(token) = protocol_str.strip_prefix("bearer.") {
                 if token == admin_service.config.admin_token {
+                    info!("Token matched! Upgrading WebSocket with bearer protocol");
+                    let protocol_owned = protocol_str.to_string();
                     return ws
-                        .protocols(["bearer"])
+                        .protocols([protocol_owned])
                         .on_upgrade(move |socket| {
                             let sub = admin_service.top_bid_tx_js.subscribe();
                             push_top_bids(socket, sub)
