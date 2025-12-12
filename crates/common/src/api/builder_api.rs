@@ -39,7 +39,7 @@ impl From<BuilderGetValidatorsResponseEntry> for BuilderGetValidatorsResponse {
     }
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, serde::Serialize, serde::Deserialize)]
 pub struct TopBidUpdate {
     pub timestamp: u64,
     pub slot: u64,

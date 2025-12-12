@@ -1,14 +1,33 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use axum::{Extension, Router, http::StatusCode, response::IntoResponse, routing::post};
+use axum::{Extension, Router, extract::{WebSocketUpgrade, ws::{Message, WebSocket}}, http::StatusCode, response::IntoResponse, routing::post};
+use bytes::Bytes;
+use futures::StreamExt;
 use helix_common::{RelayConfig, local_cache::LocalCache};
+use tokio::time;
 use tower_http::validate_request::ValidateRequestHeaderLayer;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
-pub async fn run_admin_service(auctioneer: Arc<LocalCache>, config: RelayConfig) {
+#[derive(Clone)]
+struct AdminService {
+    auctioneer: Arc<LocalCache>,
+    top_bid_tx_js: tokio::sync::broadcast::Sender<String>,
+}
+
+pub async fn run_admin_service(
+    auctioneer: Arc<LocalCache>,
+    config: RelayConfig,
+    top_bid_tx_js: tokio::sync::broadcast::Sender<String>,
+) {
+    let admin_service = AdminService {
+        auctioneer,
+        top_bid_tx_js,
+    };
+
     let router = Router::new()
         .route("/admin/v1/killswitch", post(enable_kill_switch).delete(disable_kill_switch))
-        .layer(Extension(auctioneer))
+        .route("/admin/v1/top_bid", axum::routing::get(get_top_bid))
+        .layer(Extension(admin_service))
         .layer(ValidateRequestHeaderLayer::bearer(&config.admin_token));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:4050").await.unwrap();
@@ -19,19 +38,88 @@ pub async fn run_admin_service(auctioneer: Arc<LocalCache>, config: RelayConfig)
 }
 
 async fn enable_kill_switch(
-    Extension(auctioneer): Extension<Arc<LocalCache>>,
+    Extension(admin_service): Extension<Arc<AdminService>>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    auctioneer.enable_kill_switch();
+    admin_service.auctioneer.enable_kill_switch();
     info!("Kill switch enabled");
     Ok((StatusCode::NO_CONTENT, ()))
 }
 
 async fn disable_kill_switch(
-    Extension(auctioneer): Extension<Arc<LocalCache>>,
+    Extension(admin_service): Extension<Arc<AdminService>>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    auctioneer.disable_kill_switch();
+    admin_service.auctioneer.disable_kill_switch();
     info!("Kill switch disabled");
     Ok((StatusCode::NO_CONTENT, ()))
+}
+
+#[tracing::instrument(skip_all)]
+async fn get_top_bid(
+    Extension(admin_service): Extension<Arc<AdminService>>,
+    ws: WebSocketUpgrade,
+) -> Result<impl IntoResponse, StatusCode> {
+    let sub = admin_service.top_bid_tx_js.subscribe();
+    Ok(ws.on_upgrade(move |socket| push_top_bids(socket, sub)))
+}
+
+
+async fn push_top_bids(
+    mut socket: WebSocket,
+    mut bid_stream: tokio::sync::broadcast::Receiver<String>,
+) {
+    let mut interval = time::interval(Duration::from_secs(10));
+
+    loop {
+        tokio::select! {
+            Ok(bid) = bid_stream.recv() => {
+                if socket.send(Message::Text(bid.into())).await.is_err() {
+                    error!("Failed to send bid. Disconnecting.");
+                    break;
+                }
+            },
+
+            _ = interval.tick() => {
+                if socket.send(Message::Ping(Bytes::new())).await.is_err() {
+                    error!("Failed to send ping.");
+                    break;
+                }
+            },
+
+            msg = socket.next() => {
+                match msg {
+                    Some(Ok(Message::Ping(data))) => {
+                        if socket.send(Message::Pong(data)).await.is_err() {
+                            error!("Failed to respond to ping.");
+                            break;
+                        }
+                    },
+                    Some(Ok(Message::Pong(_))) => {
+                        debug!("Received pong response.");
+                    },
+                    Some(Ok(Message::Close(_))) => {
+                        debug!("Received close frame.");
+                        break;
+                    },
+                    Some(Ok(Message::Binary(_))) => {
+                        debug!("Received Binary frame.");
+                    },
+                    Some(Ok(Message::Text(_))) => {
+                        debug!("Received Text frame.");
+                    },
+                    Some(Err(e)) => {
+                        error!("Error in WebSocket connection: {}", e);
+                        break;
+                    },
+                    None => {
+                        error!("WebSocket connection closed by the other side.");
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    debug!("Socket connection closed gracefully.");
 }
 
 #[cfg(test)]
@@ -51,7 +139,7 @@ mod test {
 
         let mut config = config::RelayConfig::empty_for_test();
         config.admin_token = "test_token".into();
-        tokio::spawn(run_admin_service(auctioneer.clone(), config));
+        tokio::spawn(run_admin_service(auctioneer.clone(), config, tokio::sync::broadcast::channel(100).0));
         tokio::time::sleep(std::time::Duration::from_secs(1)).await; // wait for server to start
         let client = reqwest::Client::new();
 
@@ -81,7 +169,7 @@ mod test {
 
         let mut config = config::RelayConfig::empty_for_test();
         config.admin_token = "test_token".into();
-        tokio::spawn(run_admin_service(auctioneer.clone(), config));
+        tokio::spawn(run_admin_service(auctioneer.clone(), config, tokio::sync::broadcast::channel(100).0));
         tokio::time::sleep(std::time::Duration::from_secs(1)).await; // wait for server to start
         let client = reqwest::Client::new();
 

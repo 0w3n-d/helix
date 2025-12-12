@@ -15,9 +15,14 @@ pub mod proposer;
 pub mod relay_data;
 pub mod router;
 pub mod service;
+pub mod top_bid_encoder;
 
-pub fn start_admin_service(auctioneer: Arc<LocalCache>, config: &RelayConfig) {
-    tokio::spawn(admin_service::run_admin_service(auctioneer, config.clone()));
+pub fn start_admin_service(
+    auctioneer: Arc<LocalCache>,
+    config: &RelayConfig,
+    top_bid_tx_js: tokio::sync::broadcast::Sender<String>,
+) {
+    tokio::spawn(admin_service::run_admin_service(auctioneer, config.clone(), top_bid_tx_js));
 }
 
 pub trait Api: Clone + Send + Sync + 'static {

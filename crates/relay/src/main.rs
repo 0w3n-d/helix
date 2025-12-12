@@ -18,9 +18,7 @@ use helix_common::{
     utils::{init_panic_hook, init_tracing_log},
 };
 use helix_relay::{
-    Api, DefaultBidAdjustor, PostgresDatabaseService, RelayNetworkManager, WebsiteService,
-    start_admin_service, start_api_service, start_beacon_client, start_db_service,
-    start_housekeeper,
+    Api, DefaultBidAdjustor, PostgresDatabaseService, RelayNetworkManager, WebsiteService, spawn_top_bid_encoder, start_admin_service, start_api_service, start_beacon_client, start_db_service, start_housekeeper
 };
 use helix_types::BlsKeypair;
 use tikv_jemallocator::Jemalloc;
@@ -96,6 +94,10 @@ async fn run(instance_id: String, config: RelayConfig, keypair: BlsKeypair) -> e
         RelayNetworkManager::new(config.relay_network.clone(), relay_signing_context.clone());
 
     let (top_bid_tx, _) = tokio::sync::broadcast::channel(100);
+    let (top_bid_ssz_tx, _) = tokio::sync::broadcast::channel(100);
+    let (top_bid_tx_js, _) = tokio::sync::broadcast::channel(100);
+
+    spawn_top_bid_encoder(top_bid_tx.clone(), top_bid_ssz_tx.clone(), top_bid_tx_js.clone());
 
     config.router_config.validate_bid_sorter()?;
 
@@ -113,7 +115,7 @@ async fn run(instance_id: String, config: RelayConfig, keypair: BlsKeypair) -> e
 
     let terminating = Arc::new(AtomicBool::default());
 
-    start_admin_service(local_cache.clone(), &config);
+    start_admin_service(local_cache.clone(), &config, top_bid_tx_js);
 
     tokio::spawn(start_api_service::<ApiProd>(
         config.clone(),
@@ -128,6 +130,7 @@ async fn run(instance_id: String, config: RelayConfig, keypair: BlsKeypair) -> e
         known_validators_loaded,
         terminating.clone(),
         top_bid_tx,
+        top_bid_ssz_tx,
         event_channel,
         relay_network_api.api(),
     ));

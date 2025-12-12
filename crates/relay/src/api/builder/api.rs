@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use axum::{Extension, http::StatusCode, response::IntoResponse};
-use bytes::Bytes;
-use helix_common::{RelayConfig, local_cache::LocalCache};
+use helix_common::{RelayConfig, api::builder_api::TopBidUpdate, local_cache::LocalCache};
 
 use crate::{
     api::Api, auctioneer::AuctioneerHandle,
@@ -17,8 +16,9 @@ pub struct BuilderApi<A: Api> {
     pub db: Arc<PostgresDatabaseService>,
     pub curr_slot_info: CurrentSlotInfo,
     pub relay_config: Arc<RelayConfig>,
-    /// Subscriber for TopBid updates, SSZ encoded
-    pub top_bid_tx: tokio::sync::broadcast::Sender<Bytes>,
+    /// Subscriber for TopBid updates
+    pub top_bid_tx: tokio::sync::broadcast::Sender<TopBidUpdate>,
+    pub top_bid_ssz_tx: tokio::sync::broadcast::Sender<bytes::Bytes>,
     pub auctioneer_handle: AuctioneerHandle,
     pub api_provider: Arc<A::ApiProvider>,
 }
@@ -29,7 +29,8 @@ impl<A: Api> BuilderApi<A> {
         db: Arc<PostgresDatabaseService>,
         relay_config: RelayConfig,
         curr_slot_info: CurrentSlotInfo,
-        top_bid_tx: tokio::sync::broadcast::Sender<Bytes>,
+        top_bid_tx: tokio::sync::broadcast::Sender<TopBidUpdate>,
+        top_bid_ssz_tx: tokio::sync::broadcast::Sender<bytes::Bytes>,
         auctioneer_handle: AuctioneerHandle,
         api_provider: Arc<A::ApiProvider>,
     ) -> Self {
@@ -39,6 +40,7 @@ impl<A: Api> BuilderApi<A> {
             relay_config: Arc::new(relay_config),
             curr_slot_info,
             top_bid_tx,
+            top_bid_ssz_tx,
             auctioneer_handle,
             api_provider,
         }

@@ -31,7 +31,7 @@ impl<A: Api> BuilderApi<A> {
             return Err(BuilderApiError::InvalidApiKey);
         }
 
-        let sub = api.top_bid_tx.subscribe();
+        let sub = api.top_bid_ssz_tx.subscribe();
         Ok(ws.on_upgrade(move |socket| push_top_bids(socket, sub)))
     }
 }
