@@ -1,9 +1,10 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use axum::{Extension, Router, extract::{WebSocketUpgrade, ws::{Message, WebSocket}}, http::StatusCode, response::IntoResponse, routing::post};
+use axum::{Extension, Router, extract::{WebSocketUpgrade, ws::{Message, WebSocket}}, http::StatusCode, response::{IntoResponse, Response}, routing::{get, post}};
 use bytes::Bytes;
 use futures::StreamExt;
 use helix_common::{RelayConfig, local_cache::LocalCache};
+use http::HeaderMap;
 use tokio::time;
 use tower_http::validate_request::ValidateRequestHeaderLayer;
 use tracing::{debug, error, info};
@@ -24,11 +25,22 @@ pub async fn run_admin_service(
         top_bid_tx_js,
     };
 
+    let rest = Router::new()
+    .route(
+        "/admin/v1/killswitch",
+        post(enable_kill_switch).delete(disable_kill_switch),
+    )
+    .layer(Extension(admin_service.clone()))
+    .layer(ValidateRequestHeaderLayer::bearer(&config.admin_token));
+
+    let ws = Router::new()
+        .route("/admin/v1/top_bid", get(get_top_bid))
+        .layer(Extension(admin_service));
+
     let router = Router::new()
-        .route("/admin/v1/killswitch", post(enable_kill_switch).delete(disable_kill_switch))
-        .route("/admin/v1/top_bid", axum::routing::get(get_top_bid))
-        .layer(Extension(admin_service))
-        .layer(ValidateRequestHeaderLayer::bearer(&config.admin_token));
+        .merge(rest)
+        .merge(ws);
+
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:4050").await.unwrap();
     match axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>()).await {
@@ -55,12 +67,29 @@ async fn disable_kill_switch(
 
 #[tracing::instrument(skip_all)]
 async fn get_top_bid(
-    Extension(admin_service): Extension<Arc<AdminService>>,
     ws: WebSocketUpgrade,
-) -> Result<impl IntoResponse, StatusCode> {
-    let sub = admin_service.top_bid_tx_js.subscribe();
-    Ok(ws.on_upgrade(move |socket| push_top_bids(socket, sub)))
+    headers: HeaderMap,
+    Extension(admin_service): Extension<Arc<AdminService>>,
+    Extension(config): Extension<RelayConfig>,
+) -> Response {
+    if let Some(protocol) = headers.get("sec-websocket-protocol") {
+        if let Ok(protocol_str) = protocol.to_str() {
+            if let Some(token) = protocol_str.strip_prefix("bearer.") {
+                if token == config.admin_token {
+                    return ws
+                        .protocols(["bearer"])
+                        .on_upgrade(move |socket| {
+                            let sub = admin_service.top_bid_tx_js.subscribe();
+                            push_top_bids(socket, sub)
+                        });
+                }
+            }
+        }
+    }
+
+    (StatusCode::UNAUTHORIZED, "Invalid or missing bearer token").into_response()
 }
+
 
 
 async fn push_top_bids(
